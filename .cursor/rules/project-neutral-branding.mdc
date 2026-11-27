@@ -1,0 +1,10 @@
+---
+description: Keep repo docs and agent output free of employer-specific branding
+alwaysApply: true
+---
+
+# Neutral project copy
+
+- Do **not** mention SLB, Schlumberger, or employer-specific org policy in markdown, commit messages, prompts, or examples committed to this repo.
+- Use generic placeholders: `your.name@company.com`, `YourOrg`, public GitHub clone URLs only.
+- Workshop journey content stays **local** (not git) — never add customer/product names to shared docs unless the user explicitly asks for a local-only file.

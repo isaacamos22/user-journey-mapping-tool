@@ -1,0 +1,50 @@
+{
+  "analysisSummary": "Primary friction sits on the nested click action: unclear location and moderate pain. Persona goals emphasize completing setup without support.",
+  "requirements": [
+    {
+      "tag": "UX",
+      "title": "Clarify where to click on Home",
+      "problemStatement": "Users hesitate on the home screen because the target control for onboarding is not obvious.",
+      "businessContext": "Onboarding demo — reduce drop-off on first session.",
+      "whyImportant": "Supports persona goal to finish setup without support tickets.",
+      "businessObjective": "Customer experience",
+      "priority": "Medium",
+      "hypothesis": {
+        "if": "Users see an explicit primary CTA on Home",
+        "then": "They proceed to the nested click step with confidence",
+        "resultingIn": "Fewer abandoned onboarding sessions"
+      },
+      "locations": {
+        "module": "Home",
+        "screen": "Home",
+        "workflowStep": "Click"
+      },
+      "researchEvidence": ["Journey map — pain on nested action", "Persona: Operations analyst"],
+      "inScope": "Copy, layout, and focus state for the primary control",
+      "outScope": "Backend onboarding APIs",
+      "constraints": "Match platform button patterns",
+      "edgeCases": "Small viewports, keyboard focus",
+      "successCriteria": "Users complete the click step without backtracking",
+      "acceptanceCriteria": "Primary action visible without scroll; accessible name matches user mental model",
+      "references": {
+        "personaId": "REPLACE_WITH_REAL_ID",
+        "stepId": "REPLACE_WITH_REAL_ID",
+        "painId": "REPLACE_WITH_REAL_ID",
+        "stepTitle": "Open page",
+        "painDescription": "Location not set"
+      },
+      "userStory": {
+        "title": "Clear primary CTA on Home",
+        "asA": "operations analyst",
+        "iWant": "see where to click to continue onboarding",
+        "soThat": "I can finish setup without asking for help",
+        "designReference": "Figma — Home onboarding CTA",
+        "userFlow": "Home → Click nested action",
+        "scope": "Home screen CTA only",
+        "dependencies": "Design tokens, analytics event for CTA click",
+        "edgeCases": "RTL, high contrast mode",
+        "acceptanceCriteria": "Given I land on Home, when I scan the page, then one primary CTA is obvious within 3 seconds"
+      }
+    }
+  ]
+}

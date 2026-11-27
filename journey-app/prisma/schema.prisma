@@ -1,0 +1,433 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum JourneyStatus {
+  DRAFT
+  PREFILL
+  WORKSHOP
+  SYNTHESIS
+  PUBLISHED
+}
+
+enum MemberRole {
+  OWNER
+  FACILITATOR
+  CONTRIBUTOR
+  VIEWER
+}
+
+enum ImportJobStatus {
+  QUEUED
+  PARSING
+  REVIEW
+  APPLIED
+  FAILED
+}
+
+enum RevisionSource {
+  MANUAL
+  AUTO_SAVE
+  PUBLISH
+  RESTORE
+  IMPORT
+}
+
+enum ExportFormat {
+  PNG
+  SVG
+  PDF
+  MARKDOWN
+  DOCX
+  ZIP
+  CSV
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  isGuest       Boolean   @default(false)
+  accounts      Account[]
+  sessions      Session[]
+  memberships   JourneyMember[]
+  comments      Comment[]
+  activities    ActivityLog[]
+  preferences   UserPreference?
+  journeysCreated Journey[] @relation("JourneyCreatedBy")
+  invitesSent     JourneyInvite[] @relation("InviteSentBy")
+  guestLinksCreated JourneyGuestLink[] @relation("GuestLinkCreatedBy")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Journey {
+  id                  String        @id @default(cuid())
+  title               String
+  slug                String        @unique
+  goal                String?
+  businessContext     String?
+  status              JourneyStatus @default(DRAFT)
+  completenessScore   Int           @default(0)
+  publishedRevisionId String?       @unique
+  publishedRevision   JourneyRevision? @relation("PublishedRevision", fields: [publishedRevisionId], references: [id])
+  facilitatorFocusStepId String?
+  createdByUserId     String?
+  createdBy           User?         @relation("JourneyCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  personas            Persona[]
+  phases              Phase[]
+  members             JourneyMember[]
+  invites             JourneyInvite[]
+  guestLinks          JourneyGuestLink[]
+  revisions           JourneyRevision[] @relation("JourneyRevisions")
+  opportunities       Opportunity[]
+  requirements        Requirement[]
+  userStories         UserStory[]
+  comments            Comment[]
+  activities          ActivityLog[]
+  exports             ExportArtifact[]
+  importJobs          ImportJob[]
+  sources             SourceDocument[]
+  stepFlowLinks       StepFlowLink[]
+  facilitatorAnchors  MapFacilitatorAnchor[]
+}
+
+model JourneyMember {
+  id        String     @id @default(cuid())
+  journeyId String
+  userId    String
+  role      MemberRole @default(CONTRIBUTOR)
+  journey   Journey    @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([journeyId, userId])
+}
+
+model JourneyInvite {
+  id              String     @id @default(cuid())
+  journeyId       String
+  email           String
+  role            MemberRole @default(CONTRIBUTOR)
+  token           String     @unique
+  expiresAt       DateTime
+  invitedByUserId String
+  acceptedAt      DateTime?
+  createdAt       DateTime   @default(now())
+  journey         Journey    @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  invitedBy       User       @relation("InviteSentBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([journeyId])
+  @@index([email])
+}
+
+model JourneyGuestLink {
+  id              String     @id @default(cuid())
+  journeyId       String
+  token           String     @unique
+  role            MemberRole @default(VIEWER)
+  label           String?
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  createdByUserId String
+  createdAt       DateTime   @default(now())
+  journey         Journey    @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  createdBy       User       @relation("GuestLinkCreatedBy", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([journeyId])
+}
+
+model Persona {
+  id           String  @id @default(cuid())
+  journeyId    String
+  name         String
+  role         String?
+  goals        String?
+  frustrations String?
+  tags         String?
+  journey      Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+}
+
+model Phase {
+  id        String @id @default(cuid())
+  journeyId String
+  title     String
+  order     Int    @default(0)
+  journey   Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  steps     Step[]
+}
+
+model Step {
+  id          String  @id @default(cuid())
+  phaseId     String
+  parentStepId        String?
+  /// Sibling actions in one horizontal flow share this id (head action id of the branch).
+  actionFlowBranchId  String?
+  title       String
+  userAction  String?
+  order       Int     @default(0)
+  channel     String?
+  phase       Phase   @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  parent      Step?   @relation("StepChildren", fields: [parentStepId], references: [id])
+  children    Step[]  @relation("StepChildren")
+  touchpoints Touchpoint[]
+  painPoints  PainPoint[]
+  feelings    StepFeeling[]
+  emotions    ThoughtsFeelings?
+  comments    Comment[]
+  flowLinksFrom StepFlowLink[] @relation("FlowLinkFrom")
+  flowLinksTo   StepFlowLink[] @relation("FlowLinkTo")
+  facilitatorAnchors MapFacilitatorAnchor[]
+}
+
+/// Directed link between user actions (or steps) — sibling / continues flow.
+model StepFlowLink {
+  id         String  @id @default(cuid())
+  journeyId  String
+  fromStepId String
+  toStepId   String
+  kind       String  @default("continues")
+  journey    Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  fromStep   Step    @relation("FlowLinkFrom", fields: [fromStepId], references: [id], onDelete: Cascade)
+  toStep     Step    @relation("FlowLinkTo", fields: [toStepId], references: [id], onDelete: Cascade)
+
+  @@unique([fromStepId, toStepId])
+  @@index([journeyId])
+}
+
+model Touchpoint {
+  id      String @id @default(cuid())
+  stepId  String
+  module  String?
+  screen  String?
+  panel   String?
+  dialog  String?
+  step    Step   @relation(fields: [stepId], references: [id], onDelete: Cascade)
+}
+
+model PainPoint {
+  id               String    @id @default(cuid())
+  stepId           String
+  description      String
+  severity         Int       @default(3)
+  evidence         String?
+  opportunity      String?
+  facilitatorHeart Boolean   @default(false)
+  step             Step      @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  facilitatorNotes Comment[]
+}
+
+model StepFeeling {
+  id           String @id @default(cuid())
+  stepId       String
+  title        String @default("")
+  confidence   Int    @default(4)
+  frustration  Int    @default(4)
+  delight      Int    @default(4)
+  freeText     String?
+  step         Step   @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([stepId])
+}
+
+model ThoughtsFeelings {
+  id           String @id @default(cuid())
+  stepId       String @unique
+  confidence   Int    @default(4)
+  frustration  Int    @default(4)
+  delight      Int    @default(4)
+  freeText     String?
+  step         Step   @relation(fields: [stepId], references: [id], onDelete: Cascade)
+}
+
+/// Hearts + facilitator notes on map opportunity bullets and user-action cards.
+model MapFacilitatorAnchor {
+  id               String    @id @default(cuid())
+  journeyId        String
+  stepId           String
+  kind             String
+  labelKey         String    @default("")
+  facilitatorHeart Boolean   @default(false)
+  journey          Journey   @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  step             Step      @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  comments         Comment[]
+
+  @@unique([journeyId, stepId, kind, labelKey])
+  @@index([journeyId])
+}
+
+model Opportunity {
+  id           String @id @default(cuid())
+  journeyId    String
+  title        String
+  ifClause     String?
+  thenClause   String?
+  resultingIn  String?
+  painPointIds String?
+  stepIds      String?
+  journey      Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+}
+
+model Requirement {
+  id               String   @id @default(cuid())
+  journeyId        String
+  tag              String   @default("UX")
+  title            String
+  bodyJson         String
+  status           String   @default("draft")
+  createdAt        DateTime @default(now())
+  synthesisBatchId String?
+  journey          Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  stories          UserStory[]
+
+  @@index([journeyId, synthesisBatchId])
+}
+
+model UserStory {
+  id            String @id @default(cuid())
+  requirementId String?
+  journeyId     String
+  title         String
+  bodyJson      String
+  status        String @default("draft")
+  requirement   Requirement? @relation(fields: [requirementId], references: [id])
+  journey       Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+}
+
+model JourneyRevision {
+  id             String         @id @default(cuid())
+  journeyId      String
+  revisionNumber Int
+  label          String?
+  snapshotJson   String
+  completenessScore Int         @default(0)
+  source         RevisionSource @default(MANUAL)
+  createdById    String?
+  createdAt      DateTime       @default(now())
+  journey        Journey        @relation("JourneyRevisions", fields: [journeyId], references: [id], onDelete: Cascade)
+  publishedFor   Journey?       @relation("PublishedRevision")
+  exports        ExportArtifact[]
+}
+
+model Comment {
+  id                    String                @id @default(cuid())
+  journeyId             String
+  stepId                String?
+  painPointId           String?
+  facilitatorAnchorId   String?
+  authorId              String
+  body                  String
+  mentions              String?
+  resolvedAt            DateTime?
+  createdAt             DateTime              @default(now())
+  journey               Journey               @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  step                  Step?                 @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  painPoint             PainPoint?            @relation(fields: [painPointId], references: [id], onDelete: Cascade)
+  facilitatorAnchor     MapFacilitatorAnchor? @relation(fields: [facilitatorAnchorId], references: [id], onDelete: Cascade)
+  author                User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([painPointId])
+  @@index([facilitatorAnchorId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  journeyId String
+  userId    String?
+  action    String
+  meta      String?
+  createdAt DateTime @default(now())
+  journey   Journey  @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model ExportArtifact {
+  id                String       @id @default(cuid())
+  journeyId         String
+  journeyRevisionId String?
+  type              String
+  format            ExportFormat
+  storagePath       String?
+  createdAt         DateTime     @default(now())
+  journey           Journey      @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  revision          JourneyRevision? @relation(fields: [journeyRevisionId], references: [id])
+}
+
+model ImportJob {
+  id        String          @id @default(cuid())
+  journeyId String?
+  status    ImportJobStatus @default(QUEUED)
+  sourceType String
+  draftJson String?
+  error     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  journey   Journey?        @relation(fields: [journeyId], references: [id])
+}
+
+model SourceDocument {
+  id         String  @id @default(cuid())
+  journeyId  String
+  filename   String
+  mimeType   String?
+  storagePath String?
+  figmaUrl   String?
+  attachOnly Boolean @default(false)
+  journey    Journey @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+}
+
+model UserPreference {
+  id              String @id @default(cuid())
+  userId          String @unique
+  dismissedTours  String?
+  figmaPat        String?
+  notifyMentions  Boolean @default(true)
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AppSetting {
+  key   String @id
+  value String
+}

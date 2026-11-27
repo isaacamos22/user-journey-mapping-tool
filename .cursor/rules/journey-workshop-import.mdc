@@ -1,0 +1,75 @@
+---
+description: Turn Figma workshop exports into journey import JSON for the User Journey Mapping Tool
+globs:
+  - journey-app/docs/**
+  - "**/*.pdf"
+  - "**/*workshop*"
+alwaysApply: false
+---
+
+# Journey workshop → import JSON
+
+When the user attaches a Figma/FigJam link, workshop PDF, images, zip, or sticky notes:
+
+## Multiple journeys per link or file
+
+One FigJam board, PDF, or zip often holds **several** user journeys (separate sections/frames/tables, each with its own title and phase grid). **Discover all** via FigJam metadata before writing JSON. **One import JSON + one `import:apply` per journey** — unique `title`, `homeCoverImage`, and slug. Do not merge unrelated grids. A URL `node-id` may be only the first journey; still scan the rest of the file unless the user scoped a single journey in chat.
+
+## Workshop grid (primary)
+
+| Row on board | JSON |
+|--------------|------|
+| Column headers | `phases[]` in left-to-right order |
+| **User steps** | **One** `steps[]` item per column: `title` = headline text |
+| **User actions** | `actions[]` — **verbatim** behavior; split `→` chains; **never** frustrations, opportunities, or goals; **each entry** needs `module` + `screen` (or touchpoint) so the map shows **Place · …** on every action card |
+| **Goals & experiences** | `experienceGoal` on the root step |
+| **Feelings** | `feeling` object; `assumed: true` only if the board says assumed |
+| **Frustrations** | Prefer **`frictions[]`** (one sticky = one string). Else `pain` with `;` between bullets — **all** stickies, no summary |
+| **Opportunities** | Prefer **`opportunities[]`** (one sticky = one string). Else `opportunity` with `;` between bullets — **all** stickies, no summary |
+
+**Discovery fidelity:** Copy stickies **losslessly** — keep `.html` paths, acronyms, ticket ids, parentheticals, and informal spelling. Do **not** merge bullets or “clean up” prose; Discovery treats the map as evidence. Set `importQuality.sourceKind` to `figjam` or `cursor-json`.
+| **Not covered** | `"coverage": "sparse"`, `confidence": "low"`, title only — **no** invented content |
+| **Rows not filled yet** | User step/actions present but goals/feelings/frustrations/suggestions blank → `"coverage": "partial"` — omit empty fields; **no** invented facilitator copy |
+
+**Persona stickies** → `personas[]` with `name`, `role`, `tags`, `goals`, `frustrations`.
+
+**Map layout:** One root step per column + nested `actions[]` in **lanes** (`actionLane`, continues links). Friction and opportunity **bullets** render on phase cards only.
+
+**Combined stacks:** One stack per parallel lane — set `actionRunBlurb` on the **first action in each lane** (not one phase blurb for every stack). Single-lane phases: `actionRunBlurb` on the root step.
+
+**Home poster card:** Portrait tile = **new generated cover** + **`title` only**. **Every import:** generate PNG → `journey-app/public/home/covers/<slug>.png`; set **`homeCoverImage`**: `/home/covers/<slug>.png`. Style: minimal, 3D, orthographic, blue–white, no text/logos. Title: `{Product} · {Journey name}`, ≤ ~60 chars. Personas are for the map rail, not the home card.
+
+**Empty columns:** Include the phase; one sparse step. Say which columns in `sourceNotes`.
+
+## Structure (FigJam MCP / PDF)
+
+1. **Columns = phases** (left → right). **One** root step per column.
+2. **Connectors** = action order; one traced chain = one `actionLane` (wrap-down / U-turn connectors stay sequential). **Parallel rows** = different `actionLane` only when connectors show real branches, not two Y-bands of one chain.
+3. **Do not mix rows** — user actions = as-is behavior only.
+4. **Dedupe** repeated stickies; note in `sourceNotes`.
+5. Fill **`importQuality`** in JSON. Server may strip sparse columns and demote mis-labeled action stickies on apply.
+
+## Sources
+
+- FigJam MCP: prefer `get_figjam` table + connectors over flat PDF when both exist
+- PDF: reconstruct columns; persona side panel; Examples/regression → `sourceNotes` only
+
+## JSON + apply
+
+Save to `journey-app/.cursor-import/<name>.json`
+
+```bash
+cd journey-app && npm run import:apply -- .cursor-import/<name>.json
+```
+
+Replace after re-import:
+
+```bash
+npx tsx scripts/reimport-by-title.ts "<Title substring>" .cursor-import/<name>.json
+```
+
+Report every journey title and `/journeys/<id>/map` (list all when the source had multiple journeys).
+
+Full prompt: `journey-app/src/lib/import/cursorImportPrompt.ts`  
+Example: `journey-app/docs/examples/cursor-import-workshop-grid.json`  
+References: `journey-app/.cursor-import/drillnet-drllg-ddr-figjam.json`, `lighthouse-workshop-pdf.json`

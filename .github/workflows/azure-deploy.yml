@@ -1,0 +1,71 @@
+name: Deploy to Azure App Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "journey-app/**"
+      - ".github/workflows/azure-deploy.yml"
+
+env:
+  NODE_VERSION: "20"
+  APP_PATH: journey-app
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: journey-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: journey-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Use PostgreSQL provider for production migrate
+        run: sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
+
+      - name: Prisma generate
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Build Next.js
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_MICROSOFT_ENTRA_ID_ID: ${{ secrets.AUTH_MICROSOFT_ENTRA_ID_ID }}
+          AUTH_MICROSOFT_ENTRA_ID_SECRET: ${{ secrets.AUTH_MICROSOFT_ENTRA_ID_SECRET }}
+          AUTH_MICROSOFT_ENTRA_ID_TENANT_ID: ${{ secrets.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID }}
+          AUTH_URL: ${{ secrets.AUTH_URL }}
+          LOCAL_MODE: "false"
+          LIVEBLOCKS_SECRET_KEY: ${{ secrets.LIVEBLOCKS_SECRET_KEY }}
+          GUEST_AUTH_ENABLED: "true"
+
+      - name: Prepare deploy package
+        run: |
+          rm -rf deploy pkg && mkdir -p deploy
+          cp -r .next public package.json package-lock.json next.config.ts prisma src/generated deploy/
+          cd deploy && npm ci --omit=dev && zip -r ../pkg.zip .
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: journey-app/pkg.zip

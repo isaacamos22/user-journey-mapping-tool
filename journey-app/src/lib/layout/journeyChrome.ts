@@ -1,0 +1,2 @@
+export const JOURNEY_RAIL_WIDTH_PX = 280;
+export const JOURNEY_RAIL_COLLAPSED_PX = 52;

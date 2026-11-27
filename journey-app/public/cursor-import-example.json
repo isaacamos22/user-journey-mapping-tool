@@ -1,0 +1,42 @@
+{
+  "title": "Self-service daily report",
+  "personas": [
+    {
+      "name": "Field operator",
+      "goals": "Submit accurate daily data without calling the office",
+      "frustrations": "Unclear steps and slow approvals"
+    }
+  ],
+  "phases": [
+    { "title": "Prepare" },
+    { "title": "Submit" },
+    { "title": "Review" }
+  ],
+  "steps": [
+    {
+      "phase": "Prepare",
+      "title": "Open daily report",
+      "action": "User opens the daily report workspace for today's date"
+    },
+    {
+      "phase": "Prepare",
+      "title": "Enter production values",
+      "action": "User enters meter readings and comments",
+      "module": "Operations",
+      "screen": "Daily report form"
+    },
+    {
+      "phase": "Submit",
+      "title": "Submit for approval",
+      "action": "User submits the report and sees confirmation",
+      "pain": "Unsure if offline entries synced",
+      "severity": 3
+    },
+    {
+      "phase": "Review",
+      "title": "Manager reviews",
+      "action": "Supervisor approves or returns with comments"
+    }
+  ],
+  "sourceNotes": "Imported from Figma workshop PDF via Cursor chat"
+}

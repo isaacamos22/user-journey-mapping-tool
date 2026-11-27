@@ -1,0 +1,61 @@
+{
+  "title": "Example · workshop grid (5 phases)",
+  "sourceNotes": "Template matching FigJam/Lighthouse journey tables. Replace cells with your workshop.",
+  "personas": [
+    {
+      "name": "Primary participant",
+      "role": "Role from profile sticky",
+      "tags": "Location, Context",
+      "goals": "From persona sticky",
+      "frustrations": "From persona sticky"
+    }
+  ],
+  "phases": [
+    { "title": "Phase A" },
+    { "title": "Phase B" },
+    { "title": "Phase C" },
+    { "title": "Phase D" },
+    { "title": "Phase E" }
+  ],
+  "steps": [
+    {
+      "phase": "Phase A",
+      "title": "User step headline from row 1",
+      "experienceGoal": "Goals & experiences cell",
+      "actions": [
+        {
+          "actionKey": "r1a",
+          "actionLane": 1,
+          "title": "Row 1",
+          "action": "First horizontal chain sticky",
+          "module": "Product",
+          "screen": "screen-a.html"
+        },
+        {
+          "actionKey": "r1b",
+          "actionLane": 1,
+          "action": "Next in same row (connector)",
+          "module": "Product",
+          "screen": "screen-b.html"
+        },
+        {
+          "actionKey": "r2a",
+          "actionLane": 2,
+          "action": "Parallel branch row under same step",
+          "module": "Product",
+          "screen": "screen-c.html"
+        }
+      ],
+      "frictions": ["Friction sticky one", "Friction sticky two"],
+      "opportunities": ["Opportunity sticky one", "Opportunity sticky two"],
+      "severity": 3,
+      "feeling": { "frustration": 4, "confidence": 4, "delight": 4, "freeText": "Feelings cell" }
+    },
+    {
+      "phase": "Phase E",
+      "title": "Phase E",
+      "coverage": "sparse",
+      "confidence": "low"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+---
+description: Analyze a journey map and produce Discovery requirements + user stories JSON
+globs:
+  - journey-app/.cursor-discovery/**
+  - journey-app/docs/CURSOR_DISCOVERY.md
+  - journey-app/src/lib/discovery/**
+alwaysApply: false
+---
+
+# Journey map → Discovery JSON
+
+When the user asks for Discovery, synthesis, requirements, or user stories from an existing journey in the app:
+
+## Stakeholder map model
+
+- **Phase column** = one root step; **friction / opportunity / experience goal** on that card only.
+- **Nested actions** = user-action lanes (`actionLane`, flow links); use for flows and `locations`, but **reference root `stepId` + `painId`** for requirements unless the fix is action-specific.
+- Insights rail **Friction on map** = same phase-level pains (by severity).
+
+## User-selected scope (required)
+
+When the prompt includes **User-selected discovery scope**, generate requirements **only** for the **numbered scope items** (one requirement per selection). **Friction** and **opportunity** lines are independent — do not merge separate scope rows unless the facilitator selected a single row. Opportunity-only rows are valid. Do not choose other pains/opportunities from the map.
+
+When **Facilitator map comments** or per-row **Facilitator comments** appear in the prompt, treat them as mandatory workshop evidence — reflect them in `researchEvidence`, `constraints`, `successCriteria`, and acceptance criteria.
+
+## Analysis rules
+
+1. **Load the map** — personas, phases, root steps (pains/opportunities), nested actions (touchpoints, chains).
+2. **Synthesize** — themes per phase; priority from **phase pain severity** (≥4 High).
+3. **Ground references** — real `stepId` (root), `painId`, `personaId` in each requirement.
+4. **Do not invent** steps, pains, personas, or opportunities not on the map.
+5. One **userStory** per requirement; `userFlow` may cite action lanes under the phase.
+
+## JSON shape
+
+Save to `journey-app/.cursor-discovery/<slug>.json`:
+
+```json
+{
+  "analysisSummary": "",
+  "requirements": [
+    {
+      "tag": "UX",
+      "title": "",
+      "problemStatement": "",
+      "priority": "Medium",
+      "hypothesis": { "if": "", "then": "", "resultingIn": "" },
+      "references": { "stepId": "", "painId": "", "personaId": "" },
+      "userStory": { "title": "", "asA": "", "iWant": "", "soThat": "" }
+    }
+  ]
+}
+```
+
+Include full Discovery fields when possible (business context, locations, scope, acceptance criteria) — see `RequirementTemplate` / `UserStoryTemplate` in `journey-app/src/lib/ai/synthesis.ts`.
+
+## Apply
+
+From `journey-app`:
+
+```bash
+npm run discovery:apply -- <journeyId> <path-to-json>
+```
+
+One Cursor pass → **one** discovery set (single `synthesisBatchId`). Default apply **replaces** the last set if re-run within ~4 minutes (same chat retry). A **new** Cursor pass that should keep prior work: add `--append`.
+
+Report `/journeys/<journeyId>/synthesis` from script output.
+
+Full doc: `journey-app/docs/CURSOR_DISCOVERY.md`
